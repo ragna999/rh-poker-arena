@@ -44,7 +44,7 @@ class RedisMatchmaker {
     await r.sadd(PREFIX + "queue", agentId);
 
     // Try to form tables
-    await this.tryFormTables();
+    try { await this.tryFormTables(); } catch(e) { console.error("tryFormTables error:", e.stack); throw e; }
 
     const pos = await r.scard(PREFIX + "queue");
     return { status: "queued", position: pos, queueSize: pos };
