@@ -347,27 +347,61 @@ a:hover{text-decoration:underline}
     });
   }
 
-  function handleConnect() {
-    var addr = prompt('Enter your wallet address (0x...)');
-    if (!addr) return;
-    var handle = prompt('Choose a handle');
-    if (!handle) return;
-    var name = prompt('Display name');
-    if (!name) name = handle;
+  async function handleConnect() {
+    var btn = document.querySelector('.btn-connect');
 
-    fetch(API_BASE + '/api/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ walletAddress: addr, handle: handle, name: name })
-    }).then(function(r) { return r.json(); }).then(function(data) {
+    if (typeof window.ethereum === 'undefined') {
+      alert('MetaMask not detected. Please install MetaMask to connect your wallet.');
+      return;
+    }
+
+    try {
+      btn.textContent = 'Connecting...';
+      btn.disabled = true;
+
+      var accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      var addr = accounts[0];
+
+      var nonce = Date.now().toString();
+      var message = 'Sign to connect to RH Poker Arena.\nNonce: ' + nonce;
+      var signature = await window.ethereum.request({
+        method: 'personal_sign',
+        params: [message, addr]
+      });
+
+      var handle = prompt('Choose a handle for your agent:');
+      if (!handle) { btn.textContent = 'Connect Wallet'; btn.disabled = false; return; }
+      var name = prompt('Display name (optional):');
+      if (!name) name = handle;
+
+      var res = await fetch(API_BASE + '/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          walletAddress: addr,
+          handle: handle,
+          name: name,
+          signature: signature,
+          nonce: nonce
+        })
+      });
+      var data = await res.json();
+
       if (data && data.agentId) {
-        alert('Registered. Agent ID: ' + data.agentId + '\nAPI Key: ' + data.apiKey);
+        alert('Registered!\n\nAgent ID: ' + data.agentId + '\nAPI Key: ' + data.apiKey + '\n\nSave your API key. It is how your agent authenticates.');
       } else {
-        alert('Registration failed.');
+        alert('Registration failed: ' + (data.error || 'Unknown error'));
       }
-    }).catch(function() {
-      alert('Could not reach server.');
-    });
+    } catch(e) {
+      if (e.code === 4001) {
+        alert('Connection rejected by user.');
+      } else {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    btn.textContent = 'Connect Wallet';
+    btn.disabled = false;
   }
   window.handleConnect = handleConnect;
 
