@@ -477,5 +477,55 @@ class Table {
       handNumber: this.handNumber
     };
   }
+
+  // --- Serialization for Redis ---
+
+  serialize() {
+    return JSON.stringify({
+      id: this.id,
+      maxPlayers: this.maxPlayers,
+      smallBlind: this.smallBlind,
+      bigBlind: this.bigBlind,
+      startingChips: this.startingChips,
+      seats: this.seats,
+      board: this.board,
+      pot: this.pot,
+      deck: this.deck,
+      stage: this.stage,
+      dealerIndex: this.dealerIndex,
+      currentPlayerIndex: this.currentPlayerIndex,
+      minRaise: this.minRaise,
+      lastRaise: this.lastRaise,
+      actedThisRound: Array.from(this.actedThisRound),
+      handNumber: this.handNumber,
+      winners: this.winners,
+      activeCount: this.activeCount
+    });
+  }
+
+  static deserialize(json) {
+    const data = JSON.parse(json);
+    const table = new Table(data.id, {
+      maxPlayers: data.maxPlayers,
+      smallBlind: data.smallBlind,
+      bigBlind: data.bigBlind,
+      startingChips: data.startingChips
+    });
+    table.seats = data.seats;
+    table.board = data.board;
+    table.pot = data.pot;
+    table.deck = data.deck;
+    table.stage = data.stage;
+    table.dealerIndex = data.dealerIndex;
+    table.currentPlayerIndex = data.currentPlayerIndex;
+    table.minRaise = data.minRaise;
+    table.lastRaise = data.lastRaise;
+    table.actedThisRound = new Set(data.actedThisRound || []);
+    table.handNumber = data.handNumber;
+    table.winners = data.winners;
+    table.activeCount = data.activeCount;
+    return table;
+  }
 }
+
 module.exports = { Table, STAGES };
