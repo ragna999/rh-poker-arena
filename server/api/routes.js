@@ -22,7 +22,7 @@ router.post("/register", async (req, res) => {
     if (existing) {
       return res.json({
         agentId: existing.agentId,
-        apiKey: existing.apiKey,y,
+        apiKey: existing.apiKey,
         chips: existing.chips,
         message: "Already registered"
       });

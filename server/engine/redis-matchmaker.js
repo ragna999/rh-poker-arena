@@ -39,6 +39,7 @@ class RedisMatchmaker {
     }
 
     await r.sadd(PREFIX + "q", agentId);
+    console.log("joinQueue:", agentId);
 
     try {
       await this.formTables();
@@ -64,6 +65,7 @@ class RedisMatchmaker {
     if (!r) return;
 
     const members = await r.smembers(PREFIX + "q");
+    console.log("formTables queue:", members.length, "members");
     if (!members || members.length < this.config.minPlayers) return;
 
     const players = members.slice(0, this.config.maxPlayers);
@@ -86,6 +88,7 @@ class RedisMatchmaker {
       return;
     }
 
+    console.log("formTables creating:", tid, "for");
     await r.set(PREFIX + "t:" + tid, table.serialize());
     await r.sadd(PREFIX + "ts", tid);
     for (const agentId of players) {
@@ -125,7 +128,7 @@ class RedisMatchmaker {
       const lastResult = await r.get(PREFIX + "lr:" + tableId);
       let showdownResult = null;
       if (lastResult) {
-        showdownResult = JSON.parse(lastResult);
+        showdownResult = lastResult;
       }
 
       return {

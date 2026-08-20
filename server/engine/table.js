@@ -504,7 +504,7 @@ class Table {
   }
 
   static deserialize(json) {
-    const data = JSON.parse(json);
+    const data = typeof json === "string" ? JSON.parse(json) : json;
     const table = new Table(data.id, {
       maxPlayers: data.maxPlayers,
       smallBlind: data.smallBlind,
