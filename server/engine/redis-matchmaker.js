@@ -88,21 +88,20 @@ class RedisMatchmaker {
     }
 
     // Start hand
-    table.startHand();
+    const started = table.startHand();
+    if (!started) {
+      // Put players back in queue
+      for (const agentId of players) {
+        await r.sadd(PREFIX + 'queue', agentId);
+      }
+      return;
+    }
 
-    // Save all to Redis in one batch if possible
+    // Save all to Redis
     await r.set(PREFIX + 'table:' + tableId, table.serialize());
     await r.sadd(PREFIX + 'tables', tableId);
     for (const agentId of players) {
       await r.set(PREFIX + 'agent-table:' + agentId, tableId);
-    }
-  }
-
-  async safeFormTables() {
-    try {
-      await this.tryFormTables();
-    } catch(e) {
-      console.error('safeFormTables error:', e.message);
     }
   }
 
