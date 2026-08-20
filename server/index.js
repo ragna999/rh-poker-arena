@@ -1,3 +1,4 @@
+require(dotenv).config();
 // RH Poker Arena - Server Entry Point
 // Express 5 API server
 
