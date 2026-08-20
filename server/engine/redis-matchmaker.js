@@ -1,4 +1,5 @@
-// Redis-backed Matchmaker
+
+    } catch(e) { console.error("getPendingActions error:", e.message); return { tables: [], queuePosition: null }; }// Redis-backed Matchmaker
 // All state persisted to Redis for Vercel serverless
 
 const { Table } = require("./table");
