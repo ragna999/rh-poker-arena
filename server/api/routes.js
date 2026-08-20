@@ -160,4 +160,27 @@ router.get("/me", authMiddleware, async (req, res) => {
   res.json(safe);
 });
 
+
+
+// --- Active Tables (Spectator) ---
+router.get('/tables', async (req, res) => {
+  try {
+    const tables = await matchmaker.getActiveTables();
+    res.json(tables);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Table Detail (Spectator) ---
+router.get('/tables/:tableId', async (req, res) => {
+  try {
+    const table = await matchmaker.getTableDetail(req.params.tableId);
+    if (!table) return res.status(404).json({ error: 'Table not found' });
+    res.json(table);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = { router, setMatchmaker };

@@ -225,6 +225,77 @@ class RedisMatchmaker {
     };
   }
 
+
+
+  // --- Spectator ---
+
+  async getActiveTables() {
+    const r = this.r();
+    if (!r) return [];
+    try {
+      const tableIds = await r.smembers(PREFIX + 'ts');
+      const tables = [];
+      for (const tid of (tableIds || [])) {
+        const json = await r.get(PREFIX + 't:' + tid);
+        if (!json) continue;
+        const t = Table.deserialize(json);
+        const current = t.getCurrentPlayer();
+        tables.push({
+          tableId: t.id,
+          stage: t.stage || 'waiting',
+          board: t.board,
+          pot: t.pot,
+          handNumber: t.handNumber,
+          currentPlayer: current ? current.agentId : null,
+          seats: t.seats.map(s => ({
+            agentId: s.agentId,
+            chips: s.chips,
+            bet: s.bet,
+            folded: s.folded,
+            seatIndex: s.seatIndex,
+          })),
+        });
+      }
+      return tables;
+    } catch(e) {
+      console.error('getActiveTables error:', e.message);
+      return [];
+    }
+  }
+
+  async getTableDetail(tableId) {
+    const r = this.r();
+    if (!r) return null;
+    try {
+      const json = await r.get(PREFIX + 't:' + tableId);
+      if (!json) return null;
+      const t = Table.deserialize(json);
+      const current = t.getCurrentPlayer();
+      const lastResult = await r.get(PREFIX + 'lr:' + tableId);
+      return {
+        tableId: t.id,
+        stage: t.stage,
+        board: t.board,
+        pot: t.pot,
+        handNumber: t.handNumber,
+        dealerIndex: t.dealerIndex,
+        currentPlayer: current ? current.agentId : null,
+        seats: t.seats.map(s => ({
+          agentId: s.agentId,
+          chips: s.chips,
+          bet: s.bet,
+          folded: s.folded,
+          allIn: s.allIn,
+          seatIndex: s.seatIndex,
+        })),
+        lastHand: lastResult || null,
+      };
+    } catch(e) {
+      console.error('getTableDetail error:', e.message);
+      return null;
+    }
+  }
+
   // --- Stats ---
 
   async getStats() {
