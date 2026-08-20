@@ -37,4 +37,5 @@ app.get('/{*splat}', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
-module.exports = app;
+// For Vercel serverless - export handler function
+module.exports = (req, res) => app(req, res);
