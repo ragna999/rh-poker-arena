@@ -1,4 +1,4 @@
-// Game API Routes
+// Game API Routes (async for Redis-backed matchmaker)
 
 const { Router } = require("express");
 const { nanoid } = require("nanoid");
@@ -22,7 +22,7 @@ router.post("/register", async (req, res) => {
     if (existing) {
       return res.json({
         agentId: existing.agentId,
-        apiKey: existing.apiKey,
+        apiKey: existing.apiKey,y,
         chips: existing.chips,
         message: "Already registered"
       });
@@ -54,59 +54,78 @@ router.post("/register", async (req, res) => {
 });
 
 // --- Join Queue ---
-router.post("/join", authMiddleware, (req, res) => {
-  const result = matchmaker.joinQueue(req.agent.agentId, req.agent.apiKey);
-  res.json(result);
+router.post("/join", authMiddleware, async (req, res) => {
+  try {
+    const result = await matchmaker.joinQueue(req.agent.agentId);
+    res.json(result);
+  } catch (err) {
+    console.error("Join error:", err.stack);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // --- Leave Queue ---
-router.post("/leave", authMiddleware, (req, res) => {
-  const result = matchmaker.leaveQueue(req.agent.agentId);
-  res.json({ left: result });
+router.post("/leave", authMiddleware, async (req, res) => {
+  try {
+    const result = await matchmaker.leaveQueue(req.agent.agentId);
+    res.json({ left: result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // --- Pending Actions ---
-router.get("/pending", authMiddleware, (req, res) => {
-  const result = matchmaker.getPendingActions(req.agent.agentId);
-  res.json(result);
+router.get("/pending", authMiddleware, async (req, res) => {
+  try {
+    const result = await matchmaker.getPendingActions(req.agent.agentId);
+    res.json(result);
+  } catch (err) {
+    console.error("Pending error:", err.stack);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // --- Submit Action ---
 router.post("/action", authMiddleware, async (req, res) => {
-  const { tableId, action, amount } = req.body;
-  if (!tableId || !action) {
-    return res.status(400).json({ error: "tableId and action required" });
-  }
-
-  let result; try { result = matchmaker.submitAction(req.agent.agentId, tableId, action, amount); } catch(e) { console.error("Action error:", e.stack); return res.status(500).json({ error: e.message }); }
-  if (result.error) {
-    return res.status(400).json(result);
-  }
-
-  if (result.table && result.table.stage === "showdown" && result.table.winners) {
-    for (const winner of result.table.winners) {
-      await recordHandResult(winner.agentId, true);
+  try {
+    const { tableId, action, amount } = req.body;
+    if (!tableId || !action) {
+      return res.status(400).json({ error: "tableId and action required" });
     }
-    const seatIds = result.table.seats.map(s => s.agentId);
-    const winnerIds = result.table.winners.map(w => w.agentId);
-    for (const id of seatIds) {
-      if (!winnerIds.includes(id)) {
-        await recordHandResult(id, false);
+
+    const result = await matchmaker.submitAction(req.agent.agentId, tableId, action, amount);
+    if (result.error) {
+      return res.status(400).json(result);
+    }
+
+    if (result.table && result.table.stage === "showdown" && result.table.winners) {
+      for (const winner of result.table.winners) {
+        await recordHandResult(winner.agentId, true);
       }
+      const seatIds = result.table.seats.map(s => s.agentId);
+      const winnerIds = result.table.winners.map(w => w.agentId);
+      for (const id of seatIds) {
+        if (!winnerIds.includes(id)) {
+          await recordHandResult(id, false);
+        }
+      }
+      for (const seat of result.table.seats) {
+        await updateChips(seat.agentId, seat.chips);
+      }
+      await recordHand({
+        tableId,
+        handNumber: result.table.handNumber,
+        board: result.table.board,
+        pot: result.table.pot,
+        winners: result.table.winners
+      });
     }
-    for (const seat of result.table.seats) {
-      await updateChips(seat.agentId, seat.chips);
-    }
-    await recordHand({
-      tableId,
-      handNumber: result.table.handNumber,
-      board: result.table.board,
-      pot: result.table.pot,
-      winners: result.table.winners
-    });
-  }
 
-  res.json(result);
+    res.json(result);
+  } catch (err) {
+    console.error("Action error:", err.stack);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // --- Leaderboard ---
@@ -118,9 +137,13 @@ router.get("/leaderboard", async (req, res) => {
 
 // --- Stats ---
 router.get("/stats", async (req, res) => {
-  const dbStats = await getStats();
-  const mmStats = matchmaker ? matchmaker.getStats() : {};
-  res.json({ ...dbStats, ...mmStats });
+  try {
+    const dbStats = await getStats();
+    const mmStats = matchmaker ? await matchmaker.getStats() : {};
+    res.json({ ...dbStats, ...mmStats });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // --- Agent Profile ---
@@ -132,7 +155,7 @@ router.get("/agent/:agentId", async (req, res) => {
 });
 
 // --- My Profile ---
-router.get("/me", authMiddleware, (req, res) => {
+router.get("/me", authMiddleware, async (req, res) => {
   const { apiKey, ...safe } = req.agent;
   res.json(safe);
 });

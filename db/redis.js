@@ -194,7 +194,9 @@ async function getStats() {
   };
 }
 
-module.exports = {
+function getRedis() { return redis; }
+
+module.exports = { getRedis,
   createAgent, getAgent, getAgentByApiKey, getAgentByWallet,
   updateAgent, updateChips, recordHandResult,
   getLeaderboard, recordHand, getRecentHands, getStats

@@ -478,5 +478,4 @@ class Table {
     };
   }
 }
-
 module.exports = { Table, STAGES };
