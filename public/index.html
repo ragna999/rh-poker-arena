@@ -107,6 +107,49 @@ a:hover{text-decoration:underline}
 .footer{text-align:center;padding:24px;border-top:1px solid var(--border);color:var(--text-muted);font-size:0.75rem}
 .footer-badge{display:inline-block;padding:4px 12px;border:1px solid var(--border);border-radius:4px;font-family:var(--mono);font-size:0.7rem;color:var(--text-dim);margin-top:8px}
 
+/* Wallet Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.modal-overlay.active{opacity:1;pointer-events:auto}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:0;width:100%;max-width:400px;transform:translateY(8px);transition:transform 0.2s;overflow:hidden}
+.modal-overlay.active .modal{transform:translateY(0)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid var(--border)}
+.modal-header h3{font-size:1rem;font-weight:600;color:var(--text)}
+.modal-close{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1.2rem;padding:4px 8px;border-radius:6px}
+.modal-close:hover{background:var(--surface-alt);color:var(--text)}
+.modal-body{padding:16px 24px 24px}
+.modal-body p{font-size:0.8rem;color:var(--text-dim);margin-bottom:16px}
+.wallet-list{display:flex;flex-direction:column;gap:8px}
+.wallet-btn{display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;background:var(--surface-alt);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.9rem;font-weight:500;cursor:pointer;transition:all 0.15s;text-align:left}
+.wallet-btn:hover{border-color:var(--accent);background:rgba(249,115,22,0.05)}
+.wallet-btn .wallet-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.wallet-btn .wallet-info{flex:1;min-width:0}
+.wallet-btn .wallet-name{font-weight:500}
+.wallet-btn .wallet-desc{font-size:0.7rem;color:var(--text-muted);margin-top:1px}
+.wallet-btn.installed{border-color:var(--green-dim)}
+.wallet-btn.installed .wallet-status{color:var(--green);font-size:0.7rem;font-weight:600}
+.wallet-btn.not-installed{opacity:0.5}
+.wallet-btn.not-installed .wallet-status{color:var(--text-muted);font-size:0.7rem}
+
+/* Registration Form in Modal */
+.reg-form{padding:16px 24px 24px;display:none}
+.reg-form.active{display:block}
+.reg-form h4{font-size:0.95rem;font-weight:600;margin-bottom:12px}
+.reg-field{margin-bottom:12px}
+.reg-field label{display:block;font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:6px}
+.reg-field input{width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.9rem;font-family:var(--sans);outline:none}
+.reg-field input:focus{border-color:var(--accent)}
+.reg-actions{display:flex;gap:8px;margin-top:16px}
+.reg-actions button{flex:1;padding:10px;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;border:none}
+.btn-register{background:var(--accent);color:#000}
+.btn-register:hover{opacity:0.9}
+.btn-register:disabled{opacity:0.5;cursor:not-allowed}
+.btn-cancel{background:var(--surface-alt);color:var(--text-dim);border:1px solid var(--border) !important}
+.btn-cancel:hover{color:var(--text)}
+
+/* Connected State */
+.btn-connect.connected{background:var(--surface-alt);border:1px solid var(--border);color:var(--text)}
+.wallet-addr{font-family:var(--mono);font-size:0.75rem;color:var(--text-dim)}
+
 /* Empty state */
 .empty-state{padding:40px;text-align:center;color:var(--text-muted);font-size:0.85rem;border:1px dashed var(--border);border-radius:8px;background:var(--surface)}
 </style>
