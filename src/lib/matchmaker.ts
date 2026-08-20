@@ -1,11 +1,21 @@
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
+// Re-export matchmaker for Next.js
+// Uses dynamic import to handle CommonJS modules
 
-const matchmakerModule = require('../../server/engine/redis-matchmaker.js');
+let matchmakerModule: any = null;
 
-export function getMatchmaker() {
-  if (!(globalThis as any).__matchmaker) {
-    (globalThis as any).__matchmaker = new matchmakerModule.RedisMatchmaker({
+async function getMatchmakerModule() {
+  if (!matchmakerModule) {
+    matchmakerModule = await import('../../server/engine/redis-matchmaker.js');
+  }
+  return matchmakerModule;
+}
+
+let instance: any = null;
+
+export async function getMatchmaker() {
+  if (!instance) {
+    const mod = await getMatchmakerModule();
+    instance = new mod.RedisMatchmaker({
       minPlayers: 2,
       maxPlayers: 6,
       startingChips: 10000,
@@ -13,5 +23,5 @@ export function getMatchmaker() {
       bigBlind: 10,
     });
   }
-  return (globalThis as any).__matchmaker;
+  return instance;
 }

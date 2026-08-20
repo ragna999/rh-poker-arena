@@ -4,7 +4,7 @@ import { getStats } from '@/lib/db';
 
 export async function GET() {
   try {
-    const mm = getMatchmaker();
+    const mm = await getMatchmaker();
     const dbStats = await getStats();
     const mmStats = await mm.getStats();
     return NextResponse.json({ ...dbStats, ...mmStats });

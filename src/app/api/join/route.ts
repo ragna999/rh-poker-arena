@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getMatchmaker } from '@/lib/matchmaker';
-import { getAgentByApiKey } from '../../../../db/redis';
+import { getAgentByApiKey } from '@/lib/db';
 
 export async function POST(req: Request) {
   try {
@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     const agent = await getAgentByApiKey(apiKey);
     if (!agent) return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
 
-    const mm = getMatchmaker();
+    const mm = await getMatchmaker();
     const result = await mm.joinQueue(agent.agentId);
     return NextResponse.json(result);
   } catch (e: any) {

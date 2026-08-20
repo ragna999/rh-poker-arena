@@ -3,7 +3,7 @@ import { getMatchmaker } from '@/lib/matchmaker';
 
 export async function GET() {
   try {
-    const mm = getMatchmaker();
+    const mm = await getMatchmaker();
     const tables = await mm.getActiveTables();
     return NextResponse.json(tables);
   } catch (e: any) {

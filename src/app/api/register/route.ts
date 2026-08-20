@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { nanoid } from 'nanoid';
-import { createAgent, getAgentByWallet } from '../../../../db/redis';
+import { createAgent, getAgentByWallet } from '@/lib/db';
 
 export async function POST(req: Request) {
   try {

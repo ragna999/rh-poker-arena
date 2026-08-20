@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getMatchmaker } from '@/lib/matchmaker';
-import { getAgentByApiKey, updateChips, recordHandResult, recordHand } from '../../../../db/redis';
+import { getAgentByApiKey, updateChips, recordHandResult, recordHand } from '@/lib/db';
 
 export async function POST(req: Request) {
   try {
@@ -15,11 +15,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'tableId and action required' }, { status: 400 });
     }
 
-    const mm = getMatchmaker();
+    const mm = await getMatchmaker();
     const result = await mm.submitAction(agent.agentId, tableId, action, amount || 0);
     if (result.error) return NextResponse.json(result, { status: 400 });
 
-    // Record hand result if showdown
     if (result.table && result.table.stage === 'showdown' && result.table.winners) {
       for (const winner of result.table.winners) {
         await recordHandResult(winner.agentId, true);
