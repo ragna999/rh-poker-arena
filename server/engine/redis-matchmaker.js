@@ -44,7 +44,7 @@ class RedisMatchmaker {
     await r.sadd(PREFIX + "queue", agentId);
 
     // Try to form tables
-    try { await this.tryFormTables(); } catch(e) { console.error("tryFormTables error:", e.stack); throw e; }
+    await this.safeFormTables()
 
     const pos = await r.scard(PREFIX + "queue");
     return { status: "queued", position: pos, queueSize: pos };
@@ -71,149 +71,39 @@ class RedisMatchmaker {
     const r = this.redis();
     if (!r) return;
 
-    while (true) {
-      const members = await r.smembers(PREFIX + "queue");
-      if (members.length < this.config.minPlayers) break;
+    const members = await r.smembers(PREFIX + 'queue');
+    if (!members || members.length < this.config.minPlayers) return;
 
-      // Take up to maxPlayers from queue
-      const players = members.slice(0, this.config.maxPlayers);
+    const players = members.slice(0, this.config.maxPlayers);
 
-      // Remove from queue
-      for (const p of players) {
-        await r.srem(PREFIX + "queue", p);
-      }
+    // Remove from queue
+    await r.srem(PREFIX + 'queue', ...players);
 
-      // Create table
-      const tableId = "tbl_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-      const table = new Table(tableId, this.config);
+    // Create table
+    const tableId = 'tbl_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const table = new Table(tableId, this.config);
 
-      for (const agentId of players) {
-        table.addPlayer(agentId);
-        await r.set(PREFIX + "agent-table:" + agentId, tableId);
-      }
-
-      // Start first hand
-      if (table.canStartHand()) {
-        table.startHand();
-      }
-
-      // Save table
-      await r.set(PREFIX + "table:" + tableId, table.serialize());
-      await r.sadd(PREFIX + "tables", tableId);
-    }
-  }
-
-  // --- Game Actions ---
-
-  async getPendingActions(agentId) {
-    const r = this.redis();
-    if (!r) return { tables: [], queuePosition: null };
-
-    const tableId = await r.get(PREFIX + "agent-table:" + agentId);
-    if (!tableId) {
-      const pos = await this.getQueuePosition(agentId);
-      return { tables: [], queuePosition: pos };
+    for (const agentId of players) {
+      table.addPlayer(agentId);
     }
 
-    const tableJson = await r.get(PREFIX + "table:" + tableId);
-    if (!tableJson) {
-      await r.del(PREFIX + "agent-table:" + agentId);
-      return { tables: [], queuePosition: null };
-    }
-
-    const table = Table.deserialize(tableJson);
-    const playerState = table.getPlayerState(agentId);
-    if (!playerState) return { tables: [], queuePosition: null };
-
-    const seat = table.seats.find(s => s.agentId === agentId);
-    const isMyTurn = table.getCurrentPlayer()?.agentId === agentId;
-
-    return {
-      tables: [{
-        tableId: table.id,
-        stage: table.stage,
-        board: table.board,
-        pot: table.pot,
-        handNumber: table.handNumber,
-        holeCards: playerState.holeCards,
-        chips: playerState.chips,
-        folded: playerState.folded,
-        allIn: playerState.allIn,
-        actions: isMyTurn ? playerState.actions : [],
-        callAmount: playerState.callAmount,
-        minRaiseTo: playerState.minRaiseTo,
-        maxCommit: playerState.maxCommit,
-        isMyTurn,
-        seats: table.seats.map(s => ({
-          agentId: s.agentId,
-          chips: s.chips,
-          bet: s.bet,
-          folded: s.folded,
-          seatIndex: s.seatIndex,
-        })),
-        winners: table.stage === "showdown" ? table.winners : undefined,
-      }],
-      queuePosition: null,
-    };
-  }
-
-  async submitAction(agentId, tableId, action, amount) {
-    const r = this.redis();
-    if (!r) return { error: "Redis unavailable" };
-
-    const tableJson = await r.get(PREFIX + "table:" + tableId);
-    if (!tableJson) return { error: "Table not found" };
-
-    const table = Table.deserialize(tableJson);
-
-    const seat = table.seats.find(s => s.agentId === agentId);
-    if (!seat) return { error: "Not at this table" };
-
-    const current = table.getCurrentPlayer();
-    if (!current || current.agentId !== agentId) return { error: "Not your turn" };
-
-    const result = table.executeAction(seat.seatIndex, action, amount);
-    if (result.error) return result;
-
-    // Advance game
-    table.advanceToNextPlayer();
-
-    // Check if hand is over
-    if (table.stage === "showdown") {
-      await this.handleHandComplete(table, r);
-    }
-
-    // Save table
-    await r.set(PREFIX + "table:" + tableId, table.serialize());
-
-    return {
-      success: true,
-      table: table.getState(),
-    };
-  }
-
-  async handleHandComplete(table, r) {
-    // Remove busted players
-    const busted = table.seats.filter(s => s.chips <= 0 && s.folded);
-    for (const seat of busted) {
-      await r.del(PREFIX + "agent-table:" + seat.agentId);
-    }
-
-    // Check if enough players for next hand
-    if (!table.canStartHand()) {
-      for (const seat of table.seats) {
-        if (seat.chips > 0) {
-          await r.del(PREFIX + "agent-table:" + seat.agentId);
-        }
-      }
-      await r.del(PREFIX + "table:" + table.id);
-      await r.srem(PREFIX + "tables", table.id);
-      return;
-    }
-
-    // Start next hand immediately
+    // Start hand
     table.startHand();
-    await r.set(PREFIX + "table:" + table.id, table.serialize());
+
+    // Save all to Redis in one batch if possible
+    await r.set(PREFIX + 'table:' + tableId, table.serialize());
+    await r.sadd(PREFIX + 'tables', tableId);
+    for (const agentId of players) {
+      await r.set(PREFIX + 'agent-table:' + agentId, tableId);
+    }
+  }
+
+  async safeFormTables() {
+    try {
+      await this.tryFormTables();
+    } catch(e) {
+      console.error('safeFormTables error:', e.message);
+    }
   }
 
   // --- Stats ---
